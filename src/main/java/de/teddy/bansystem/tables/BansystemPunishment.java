@@ -1,12 +1,12 @@
-package de.teddy.bansystem.database.tables;
+package de.teddy.bansystem.tables;
 
 import de.teddy.util.TimeUtil;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import net.md_5.bungee.api.ChatColor;
 import org.hibernate.Hibernate;
 
-import javax.persistence.*;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.Objects;

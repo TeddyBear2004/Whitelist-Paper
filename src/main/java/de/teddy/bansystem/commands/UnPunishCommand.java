@@ -1,119 +1,103 @@
 package de.teddy.bansystem.commands;
 
 import de.teddy.bansystem.BanSystem;
-import de.teddy.bansystem.database.tables.BansystemPunishment;
-import de.teddy.util.HibernateUtil;
+import de.teddy.bansystem.tables.BansystemPunishment;
 import de.teddy.util.TabUtil;
 import de.teddy.util.UUIDConverter;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Root;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
-import org.hibernate.Session;
-import org.hibernate.Transaction;
+import org.hibernate.SessionFactory;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 
-public record UnPunishCommand(String type, String verb) implements CommandExecutor, TabCompleter {
+public final class UnPunishCommand implements CommandExecutor, TabCompleter {
 
-    @Override
-    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args){
-        if(args.length >= 1){
-            try{
-                UUID uuid = UUIDConverter.getUUIDByName(args[0]);
-                if(uuid == null){
-                    BanSystem.sendErrorMessage(sender, "Der Spieler konnte nicht gefunden werden.");
-                    return true;
-                }
+    private final String type;
+    private final String verb;
+    private final SessionFactory sessionFactory;
 
-                Session session = HibernateUtil.getSession();
-
-                Transaction transaction = session.beginTransaction();
-
-                try{
-                    List<BansystemPunishment> punishments = session.createQuery(
-                                    "from BansystemPunishment where type = :type and player.uuid = :uuid and (startTime + duration > :date or duration = -1)",
-                                    BansystemPunishment.class)
-                            .setCacheable(true)
-                            .setParameter("type", this.type)
-                            .setParameter("uuid", uuid.toString())
-                            .setParameter("date", System.currentTimeMillis())
-                            .getResultList();
-                    punishments.forEach(punishment -> punishment.setActive(false));
-                    transaction.commit();
-                    session.close();
-                    sendSuccessMessage(sender, args[0]);
-                    return true;
-                }catch(NullPointerException e){
-                    e.printStackTrace();
-                    transaction.rollback();
-                    session.close();
-                }
-
-            }catch(IOException e){
-                BanSystem.sendErrorMessage(sender, "Der Spieler konnte nicht gefunden werden.");
-            }
-        }
-        return false;
+    public UnPunishCommand(String type, String verb, SessionFactory sessionFactory) {
+        this.type = type;
+        this.verb = verb;
+        this.sessionFactory = sessionFactory;
     }
 
-    private void sendSuccessMessage(CommandSender sender, String user){
+    @Override
+    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
+        if (args.length < 1) return false;
+
+        try{
+            UUID uuid = UUIDConverter.getUUIDByName(args[0]);
+            if (uuid == null) {
+                BanSystem.sendErrorMessage(sender, "Der Spieler konnte nicht gefunden werden.");
+                return true;
+            }
+
+            List<BansystemPunishment> punishments = sessionFactory.fromSession(session -> {
+                CriteriaBuilder builder = session.getCriteriaBuilder();
+                CriteriaQuery<BansystemPunishment> query = builder.createQuery(BansystemPunishment.class);
+                Root<BansystemPunishment> root = query.from(BansystemPunishment.class);
+                query.select(root)
+                        .where(builder.and(
+                                builder.equal(root.get("type"), this.type),
+                                builder.equal(root.get("player").get("uuid"), uuid.toString()),
+                                builder.or(
+                                        builder.greaterThan(root.get("startTime").as(Long.class), System.currentTimeMillis()),
+                                        builder.equal(root.get("duration"), -1)
+                                )
+                        ));
+                return session.createQuery(query).getResultList();
+            });
+
+
+            punishments.forEach(punishment -> punishment.setActive(false));
+            sendSuccessMessage(sender, args[0]);
+
+        }catch(IOException e){
+            BanSystem.sendErrorMessage(sender, "Der Spieler konnte nicht gefunden werden.");
+        }
+
+        return true;
+    }
+
+    private void sendSuccessMessage(CommandSender sender, String user) {
         BanSystem.sendMessage(sender, String.format("%s wurde erfolgreich " + this.verb + ".", user));
     }
 
     @Override
-    public @Nullable
-    List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args){
-        if(args.length == 1){
-            Session session = HibernateUtil.getSession();
-            ;
-            Transaction transaction = session.beginTransaction();
-            List<String> bannedPlayers = getBannedPlayers(session);
-            transaction.commit();
-            session.close();
-            return TabUtil.reduceEntries(args[0], bannedPlayers);
+    public @NotNull List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args) {
+        if (args.length == 1) {
+            return TabUtil.reduceEntries(args[0], getBannedPlayers());
         }
         return Collections.emptyList();
     }
 
     @NotNull
-    private List<String> getBannedPlayers(Session session){
-        return session.createQuery(
-                        "select player.username from BansystemPunishment where type = :type and active = true and (startTime + duration > :time or duration = -1)",
-                        String.class)
-                .setCacheable(true)
-                .setParameter("type", this.type)
-                .setParameter("time", System.currentTimeMillis())
-                .getResultList();
-    }
-
-    @Override
-    public boolean equals(Object obj){
-        if(obj == this)
-            return true;
-        if(obj == null || obj.getClass() != this.getClass())
-            return false;
-        var that = (UnPunishCommand)obj;
-        return Objects.equals(this.type, that.type) &&
-                Objects.equals(this.verb, that.verb);
-    }
-
-    @Override
-    public int hashCode(){
-        return Objects.hash(type, verb);
-    }
-
-    @Override
-    public String toString(){
-        return "UnPunishCommand[" +
-                "type=" + type + ", " +
-                "verb=" + verb + ']';
+    private List<String> getBannedPlayers() {
+        return sessionFactory.fromSession(session -> {
+            CriteriaBuilder builder = session.getCriteriaBuilder();
+            CriteriaQuery<String> query = builder.createQuery(String.class);
+            Root<BansystemPunishment> root = query.from(BansystemPunishment.class);
+            query.select(root.get("player").get("username"))
+                    .where(builder.and(
+                            builder.equal(root.get("type"), this.type),
+                            builder.isTrue(root.get("active")),
+                            builder.or(
+                                    builder.greaterThan(root.get("startTime").as(Long.class), System.currentTimeMillis()),
+                                    builder.equal(root.get("duration"), -1)
+                            )
+                    ));
+            return session.createQuery(query).getResultList();
+        });
     }
 
 }

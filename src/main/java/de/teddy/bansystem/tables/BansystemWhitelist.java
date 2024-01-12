@@ -1,10 +1,10 @@
-package de.teddy.bansystem.database.tables;
+package de.teddy.bansystem.tables;
 
 import org.hibernate.Hibernate;
 import org.hibernate.annotations.NotFound;
 import org.hibernate.annotations.NotFoundAction;
 
-import javax.persistence.*;
+import jakarta.persistence.*;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.Objects;

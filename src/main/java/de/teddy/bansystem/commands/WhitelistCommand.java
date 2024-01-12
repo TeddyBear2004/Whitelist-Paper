@@ -2,17 +2,18 @@ package de.teddy.bansystem.commands;
 
 import com.google.common.collect.Lists;
 import de.teddy.bansystem.BanSystem;
-import de.teddy.bansystem.database.tables.BansystemPlayer;
-import de.teddy.bansystem.database.tables.BansystemToken;
-import de.teddy.bansystem.database.tables.BansystemWhitelist;
-import de.teddy.util.HibernateUtil;
+import de.teddy.bansystem.tables.BansystemPlayer;
+import de.teddy.bansystem.tables.BansystemToken;
+import de.teddy.bansystem.tables.BansystemWhitelist;
 import de.teddy.util.UUIDConverter;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Root;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
-import org.hibernate.Session;
-import org.hibernate.Transaction;
+import org.hibernate.SessionFactory;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -23,142 +24,136 @@ import java.util.List;
 import java.util.UUID;
 
 public class WhitelistCommand implements CommandExecutor, TabCompleter {
-	@Override
-	public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args){
-		if(sender.hasPermission("bansystem.whitelist")){
-			if(args.length == 0){
-				BanSystem.sendErrorMessage(sender, "Bitte gebe als erstes Argument add, remove oder list ein.");
-				return true;
-			}
-			if(args[0].equalsIgnoreCase("add"))
-				add(sender, args);
-			else if(args[0].equalsIgnoreCase("remove"))
-				remove(sender, args);
-			else if(args[0].equalsIgnoreCase("list"))
-				list(sender);
-			else
-				BanSystem.sendErrorMessage(sender, "Bitte gebe als erstes Argument add, remove oder list ein.");
-		}
-		return true;
-	}
 
-	private static void add(@NotNull CommandSender sender, @NotNull String[] args){
-		if(args.length == 1){
-			BanSystem.sendErrorMessage(sender, "Du musst einen Spieler angeben!");
-			return;
-		}
+    private final SessionFactory sessionFactory;
 
-		try{
-			UUID uuid = UUIDConverter.getUUIDByName(args[1]);
-			if(uuid != null){
-				Session session = HibernateUtil.getSession();
-				Transaction transaction = session.beginTransaction();
-				BansystemPlayer bansystemPlayer = session.get(BansystemPlayer.class, uuid.toString());
+    public WhitelistCommand(SessionFactory sessionFactory) {
+        this.sessionFactory = sessionFactory;
+    }
 
-				if(bansystemPlayer == null){
-					bansystemPlayer = new BansystemPlayer(uuid.toString(), new Date(System.currentTimeMillis()));
-					session.save(bansystemPlayer);
-				}
+    private void add(@NotNull CommandSender sender, @NotNull String[] args) {
+        if (args.length == 1) {
+            BanSystem.sendErrorMessage(sender, "Du musst einen Spieler angeben!");
+            return;
+        }
 
-				BansystemWhitelist bansystemWhitelist = new BansystemWhitelist();
-				bansystemWhitelist.setBansystemPlayer(bansystemPlayer);
-				bansystemWhitelist.setBansystemToken(session.get(BansystemToken.class, 0));
-				session.save(bansystemWhitelist);
+        try{
+            UUID uuid = UUIDConverter.getUUIDByName(args[1]);
+            if (uuid != null) {
+                sessionFactory.inSession(session -> {
+                    CriteriaBuilder builder = session.getCriteriaBuilder();
+                    CriteriaQuery<BansystemPlayer> query = builder.createQuery(BansystemPlayer.class);
+                    Root<BansystemPlayer> root = query.from(BansystemPlayer.class);
+                    query.select(root).where(builder.equal(root.get("uuid"), uuid.toString()));
+                    BansystemPlayer bansystemPlayer = session.createQuery(query).uniqueResult();
 
-				transaction.commit();
-				session.close();
-				BanSystem.sendMessage(sender, args[1] + " wird zur Whitelist hinzugefügt!");
-			}else{
-				BanSystem.sendErrorMessage(sender, "Der Spieler konnte nicht gefunden werden!");
-			}
-		}catch(IOException e){
-			BanSystem.sendErrorMessage(sender, "Der Spieler konnte nicht gefunden werden!");
-		}
-	}
+                    if (bansystemPlayer == null) {
+                        bansystemPlayer = new BansystemPlayer(uuid.toString(), new Date(System.currentTimeMillis()));
+                        session.persist(bansystemPlayer);
+                    }
 
-	private static void remove(@NotNull CommandSender sender, @NotNull String[] args){
-		if(args.length == 1){
-			BanSystem.sendErrorMessage(sender, "Du musst einen Spieler angeben!");
-			return;
-		}
+                    BansystemWhitelist bansystemWhitelist = new BansystemWhitelist();
+                    bansystemWhitelist.setBansystemPlayer(bansystemPlayer);
+                    bansystemWhitelist.setBansystemToken(session.get(BansystemToken.class, 0));
+                    session.persist(bansystemWhitelist);
 
-		try{
-			UUID uuid = UUIDConverter.getUUIDByName(args[1]);
-			if(uuid != null){
-				Session session = HibernateUtil.getSession();
-				Transaction transaction = session.beginTransaction();
+                    BanSystem.sendMessage(sender, args[1] + " wird zur Whitelist hinzugefügt!");
+                });
+            } else {
+                BanSystem.sendErrorMessage(sender, "Der Spieler konnte nicht gefunden werden!");
+            }
+        }catch(IOException e){
+            BanSystem.sendErrorMessage(sender, "Der Spieler konnte nicht gefunden werden!");
+        }
+    }
 
-				List<BansystemWhitelist> resultList = session.createQuery(
-								"from BansystemWhitelist where bansystemPlayer.uuid = '" + uuid + "'",
-								BansystemWhitelist.class)
-						.setCacheable(true)
-						.getResultList();
+    private void remove(@NotNull CommandSender sender, @NotNull String[] args) {
+        if (args.length == 1) {
+            BanSystem.sendErrorMessage(sender, "Du musst einen Spieler angeben!");
+            return;
+        }
 
-				session.remove(resultList.get(0));
-				transaction.commit();
-				session.close();
+        try{
+            UUID uuid = UUIDConverter.getUUIDByName(args[1]);
+            if (uuid != null) {
+                sessionFactory.inSession(session -> {
+                    CriteriaBuilder builder = session.getCriteriaBuilder();
+                    CriteriaQuery<BansystemWhitelist> query = builder.createQuery(BansystemWhitelist.class);
+                    Root<BansystemWhitelist> root = query.from(BansystemWhitelist.class);
+                    query.select(root).where(builder.equal(root.get("bansystemPlayer").get("uuid"), uuid.toString()));
+                    BansystemWhitelist bansystemWhitelist = session.createQuery(query).uniqueResult();
 
-				BanSystem.sendMessage(sender, args[1] + " wird von der Whitelist entfernt!");
-			}else{
-				BanSystem.sendErrorMessage(sender, "Der Spieler konnte nicht gefunden werden!");
-			}
-		}catch(IOException e){
-			BanSystem.sendErrorMessage(sender, "Der Spieler konnte nicht gefunden werden!");
-		}
-	}
+                    session.remove(bansystemWhitelist);
 
-	private static void list(@NotNull CommandSender sender){
-		Session session = HibernateUtil.getSession();
-		Transaction transaction = session.beginTransaction();
+                    BanSystem.sendMessage(sender, args[1] + " wird von der Whitelist entfernt!");
+                });
+            } else {
+                BanSystem.sendErrorMessage(sender, "Der Spieler konnte nicht gefunden werden!");
+            }
+        }catch(IOException e){
+            BanSystem.sendErrorMessage(sender, "Der Spieler konnte nicht gefunden werden!");
+        }
+    }
 
-		List<BansystemWhitelist> resultList = session
-				.createQuery(
-						"from BansystemWhitelist",
-						BansystemWhitelist.class)
-				.getResultList();
+    private void list(@NotNull CommandSender sender) {
+        sessionFactory.inSession(session -> {
+            CriteriaBuilder builder = session.getCriteriaBuilder();
+            CriteriaQuery<BansystemWhitelist> query = builder.createQuery(BansystemWhitelist.class);
+            Root<BansystemWhitelist> root = query.from(BansystemWhitelist.class);
+            query.select(root);
+            List<BansystemWhitelist> resultList = session.createQuery(query).getResultList();
 
+            StringBuilder stringBuilder = new StringBuilder();
+            for (int i = 0; i < resultList.size(); i++) {
+                BansystemPlayer player = resultList.get(i).getPlayer();
+                if (player != null) {
+                    stringBuilder.append(resultList.get(i).getPlayer().getUsername());
+                    if (i != resultList.size() - 1)
+                        stringBuilder.append(", ");
+                }
+            }
+            BanSystem.sendMessage(sender, "Die Whitelist enthält folgende Spieler: " + stringBuilder);
+        });
+    }
 
-		StringBuilder builder = new StringBuilder();
-		for(int i = 0; i < resultList.size(); i++){
-			BansystemPlayer player = resultList.get(i).getPlayer();
-			if(player != null){
-				builder.append(resultList.get(i).getPlayer().getUsername());
-				if(i != resultList.size() - 1)
-					builder.append(", ");
-			}
-		}
-		BanSystem.sendMessage(sender, "Die Whitelist enthält folgende Spieler: " + builder);
-		transaction.commit();
-		session.close();
-	}
+    @Override
+    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
+        if (sender.hasPermission("bansystem.whitelist")) {
+            if (args.length == 0) {
+                BanSystem.sendErrorMessage(sender, "Bitte gebe als erstes Argument add, remove oder list ein.");
+                return true;
+            }
+            if (args[0].equalsIgnoreCase("add"))
+                add(sender, args);
+            else if (args[0].equalsIgnoreCase("remove"))
+                remove(sender, args);
+            else if (args[0].equalsIgnoreCase("list"))
+                list(sender);
+            else
+                BanSystem.sendErrorMessage(sender, "Bitte gebe als erstes Argument add, remove oder list ein.");
+        }
+        return true;
+    }
 
+    @Nullable
+    @Override
+    public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args) {
+        if (args.length == 1)
+            return Lists.newArrayList("add", "remove", "list");
+        if (args.length >= 2) {
+            if (args[0].equalsIgnoreCase("add") || args[0].equalsIgnoreCase("list")) {
+                return Collections.emptyList();
+            } else if (args[0].equalsIgnoreCase("remove")) {
+                return sessionFactory.fromSession(session -> {
+                    CriteriaBuilder builder = session.getCriteriaBuilder();
+                    CriteriaQuery<String> query = builder.createQuery(String.class);
+                    Root<BansystemWhitelist> root = query.from(BansystemWhitelist.class);
+                    query.select(root.get("player").get("username"));
+                    return session.createQuery(query).getResultList();
+                });
+            }
+        }
+        return Collections.emptyList();
+    }
 
-	@Nullable
-	@Override
-	public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args){
-		if(args.length == 1)
-			return Lists.newArrayList("add", "remove", "list");
-		if(args.length >= 2){
-			if(args[0].equalsIgnoreCase("add") || args[0].equalsIgnoreCase("list")){
-				return Collections.emptyList();
-			}else if(args[0].equalsIgnoreCase("remove")){
-				Session session = HibernateUtil.getSession();
-				Transaction transaction = session.beginTransaction();
-
-				List<String> resultList = session.createQuery(
-								"from BansystemWhitelist",
-								BansystemWhitelist.class)
-						.setCacheable(true)
-						.getResultList()
-						.stream()
-						.map(bansystemWhitelist -> bansystemWhitelist.getPlayer().getUsername())
-						.toList();
-
-				transaction.commit();
-				session.close();
-				return resultList;
-			}
-		}
-		return Collections.emptyList();
-	}
 }

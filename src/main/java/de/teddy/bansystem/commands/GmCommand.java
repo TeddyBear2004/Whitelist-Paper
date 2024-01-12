@@ -14,21 +14,18 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class GmCommand implements CommandExecutor, @Nullable TabCompleter {
+public class GmCommand implements CommandExecutor, TabCompleter {
 	@Override
 	public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args){
 		if(args.length == 0){
 			return false;
 		}
-		if(args[0].equals("0")){
-			args[0] = "survival";
-		}else if(args[0].equals("1")){
-			args[0] = "creative";
-		}else if(args[0].equals("2")){
-			args[0] = "adventure";
-		}else if(args[0].equals("3")){
-			args[0] = "spectator";
-		}
+        switch(args[0]){
+            case "0" -> args[0] = "survival";
+            case "1" -> args[0] = "creative";
+            case "2" -> args[0] = "adventure";
+            case "3" -> args[0] = "spectator";
+        }
 		return Bukkit.dispatchCommand(sender, "gamemode " + args[0] + " " + (args.length > 1 ? args[1] : ""));
 	}
 

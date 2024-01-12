@@ -1,31 +1,32 @@
 package de.teddy.bansystem.commands;
 
 import de.teddy.bansystem.BanSystem;
-import de.teddy.bansystem.database.tables.BansystemPlayer;
-import de.teddy.bansystem.database.tables.BansystemPunishment;
-import de.teddy.bansystem.database.tables.BansystemReasons;
-import de.teddy.util.HibernateUtil;
+import de.teddy.bansystem.tables.BansystemPlayer;
+import de.teddy.bansystem.tables.BansystemPunishment;
+import de.teddy.bansystem.tables.BansystemReasons;
 import de.teddy.util.TabUtil;
 import de.teddy.util.TimeUtil;
 import de.teddy.util.UUIDConverter;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
-import org.hibernate.Session;
+import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.List;
 import java.util.stream.Collectors;
 
 public record PunishCommand(String normalPermission, String extendedPermission, String type,
-                            String verb) implements CommandExecutor, TabCompleter {
+							String verb, SessionFactory sessionFactory) implements CommandExecutor, TabCompleter {
 
 	@Override
 	public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args){
@@ -82,7 +83,7 @@ public record PunishCommand(String normalPermission, String extendedPermission, 
 
 						String s = args[0] + " " + reason;
 
-						return new KickCommand().onCommand(sender, command, label, s.split(" "));
+						return new KickCommand(sessionFactory).onCommand(sender, command, label, s.split(" "));
 					}else{
 						minutes = TimeUtil.stringToMinutes(time);
 						if(minutes == 0){
@@ -138,24 +139,6 @@ public record PunishCommand(String normalPermission, String extendedPermission, 
 		return true;
 	}
 
-	private static String buildReason(String[] args){
-		StringBuilder reasonBuilder = new StringBuilder();
-
-		char actual = 'r';
-		for(int i = 1; i < args.length; i++){
-			if(args[i].equalsIgnoreCase("-t")){
-				actual = 't';
-			}else if(args[i].equalsIgnoreCase("-r")){
-				actual = 'r';
-			}else{
-				if(actual == 'r'){
-					reasonBuilder.append(args[i]).append(" ");
-				}
-			}
-		}
-		return reasonBuilder.toString();
-	}
-
 	@Override
 	@NotNull
 	public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args){
@@ -173,9 +156,9 @@ public record PunishCommand(String normalPermission, String extendedPermission, 
 			Optional<BansystemReasons> first = getBanSystemReasons()
 					.stream()
 					.filter(banSystemReason ->
-							banSystemReason
-									.getReason()
-									.equalsIgnoreCase(actualReason.trim()))
+									banSystemReason
+											.getReason()
+											.equalsIgnoreCase(actualReason.trim()))
 					.findFirst();
 
 			if(args[args.length - 2].equals("-t")){
@@ -217,7 +200,7 @@ public record PunishCommand(String normalPermission, String extendedPermission, 
 						}
 						toReturn.add(s.toString());
 					}
-					if(toReturn.size() != 0)
+					if(!toReturn.isEmpty())
 						return toReturn;
 				}
 			}
@@ -254,32 +237,88 @@ public record PunishCommand(String normalPermission, String extendedPermission, 
 		}
 	}
 
-	private void punishPlayer(UUID uuid, String name, String reason, long duration, CommandSender staff){
-		Session session = HibernateUtil.getSession();
-		;
-		Transaction transaction = session.beginTransaction();
+	private static String buildReason(String[] args){
+		StringBuilder reasonBuilder = new StringBuilder();
 
-		BansystemPlayer banned = session.get(BansystemPlayer.class, uuid.toString());
-		BansystemPlayer bansystemStaff = null;
-		if(staff instanceof Player player1)
-			bansystemStaff = session.get(BansystemPlayer.class, player1.getUniqueId().toString());
-
-		if(banned == null){
-			banned = new BansystemPlayer(uuid.toString(), null);
-			banned.setUsername(name);
-			session.save(banned);
+		char actual = 'r';
+		for(int i = 1; i < args.length; i++){
+			if(args[i].equalsIgnoreCase("-t")){
+				actual = 't';
+			}else if(args[i].equalsIgnoreCase("-r")){
+				actual = 'r';
+			}else{
+				if(actual == 'r'){
+					reasonBuilder.append(args[i]).append(" ");
+				}
+			}
 		}
+		return reasonBuilder.toString();
+	}
 
-		BansystemPunishment bansystemPunishment = new BansystemPunishment(banned, bansystemStaff, System.currentTimeMillis(), duration == -1 ? duration : duration * 60000, type, reason);
-		bansystemPunishment.setActive(true);
-		session.save(bansystemPunishment);
 
-		Player player = Bukkit.getPlayer(uuid);
-		if(player != null && Objects.equals(type, "b"))
-			player.kickPlayer(bansystemPunishment.getBanScreenMessage());
+	private void punishPlayer(UUID uuid, String name, String reason, long duration, CommandSender staff){
+		sessionFactory.inSession(session -> {
+			Transaction transaction = session.beginTransaction();
 
-		transaction.commit();
-		session.close();
+			BansystemPlayer banned = session.get(BansystemPlayer.class, uuid.toString());
+			BansystemPlayer bansystemStaff = null;
+			if(staff instanceof Player player1)
+				bansystemStaff = session.get(BansystemPlayer.class, player1.getUniqueId().toString());
+
+			if(banned == null){
+				banned = new BansystemPlayer(uuid.toString(), null);
+				banned.setUsername(name);
+				session.persist(banned);
+			}
+
+			BansystemPunishment bansystemPunishment = new BansystemPunishment(banned, bansystemStaff, System.currentTimeMillis(), duration == -1 ? duration : duration * 60000, type, reason);
+			bansystemPunishment.setActive(true);
+			session.persist(bansystemPunishment);
+
+			Player player = Bukkit.getPlayer(uuid);
+			if(player != null && Objects.equals(type, "b"))
+				player.kick(Component.text(bansystemPunishment.getBanScreenMessage()));
+
+			transaction.commit();
+		});
+	}
+
+	private void sendSuccessMessage(CommandSender sender, String player, long time, String reason){
+		Component message = Component.text()
+				.append(Component.text(player.trim() + " wurde ", NamedTextColor.GRAY))
+				.append(Component.text(verb, NamedTextColor.GOLD))
+				.build();
+
+		Component secondMessage = Component.text()
+				.append(Component.text("Grund: ", NamedTextColor.GRAY))
+				.append(Component.text(reason.trim(), NamedTextColor.GOLD))
+				.append(Component.text(" Dauer: ", NamedTextColor.GRAY))
+				.append(Component.text(time == -1 ? "Permanent" : TimeUtil.parseMinutes(time), NamedTextColor.GOLD))
+				.build();
+
+		Component advancedMessage = Component.text()
+				.append(Component.text(player.trim() + " wurde von ", NamedTextColor.GRAY))
+				.append(Component.text(sender.getName(), NamedTextColor.AQUA))
+				.append(Component.text(" " + verb, NamedTextColor.GRAY))
+				.build();
+
+		Component advancedSecondMessage = Component.text()
+				.append(Component.text("Grund: ", NamedTextColor.GRAY))
+				.append(Component.text(reason.trim(), NamedTextColor.GOLD))
+				.append(Component.text(" Dauer: ", NamedTextColor.GRAY))
+				.append(Component.text(time == -1 ? "Permanent" : TimeUtil.parseMinutes(time), NamedTextColor.GOLD))
+				.build();
+
+		Bukkit.getOnlinePlayers()
+				.forEach(p -> {
+					if(p.hasPermission("bansystem.bansystem.receive.history.advanced")){
+						p.sendMessage(advancedMessage);
+						p.sendMessage(advancedSecondMessage);
+					}else if(p.hasPermission("bansystem.bansystem.receive.history")){
+						p.sendMessage(message);
+						p.sendMessage(secondMessage);
+					}
+				});
 	}
 
 	private void sendPunishMessage(String p, long time, String reason){
@@ -289,76 +328,39 @@ public record PunishCommand(String normalPermission, String extendedPermission, 
 
 		String timeString = time == -1 ? "unbegrenzte Zeit " : TimeUtil.parseMinutes(time) + " Minuten ";
 
-		BanSystem.sendErrorMessage(sender, ChatColor.GRAY + "Du wurdest " + verb + ".");
-		BanSystem.sendErrorMessage(sender, ChatColor.GRAY + "Grund: " + ChatColor.GOLD + "" + reason);
-		BanSystem.sendErrorMessage(sender, ChatColor.GRAY + "Dauer: " + ChatColor.GOLD + "" + timeString);
-	}
-
-	private void sendSuccessMessage(CommandSender sender, String player, long time, String reason){
-		//opfer verb Gold, Grund grau Gold Dauer
-		String message = String.format("%s wurde %s",
-				player.trim(),
-				verb);
-		String secondMessage = String.format("Grund: %s%s%s Dauer: %s%s",
-				ChatColor.GOLD,
-				reason.trim(),
-				ChatColor.GRAY,
-				ChatColor.GOLD,
-				time == -1 ? "Permanent" : TimeUtil.parseMinutes(time));
-
-		String advancedMessage = String.format("%s wurde von %s%s%s %s.",
-				player.trim(),
-				ChatColor.AQUA,
-				sender.getName(),
-				ChatColor.GRAY,
-				verb);
-
-		String advancedSecondMessage = String.format("Grund: %s%s%s Dauer: %s%s",
-				ChatColor.GOLD,
-				reason.trim(),
-				ChatColor.GRAY,
-				ChatColor.GOLD,
-				time == -1 ? "Permanent" : TimeUtil.parseMinutes(time));
-
-		Bukkit.getOnlinePlayers()
-				.forEach(p -> {
-					if(p.hasPermission("bansystem.bansystem.receive.history.advanced")){
-						BanSystem.sendMessage(p, advancedMessage);
-						p.sendMessage(ChatColor.GRAY + advancedSecondMessage);
-					}else if(p.hasPermission("bansystem.bansystem.receive.history")){
-						BanSystem.sendMessage(p, message);
-						p.sendMessage(ChatColor.GRAY + secondMessage);
-					}
-				});
+		sender.sendMessage(Component.text("Du wurdest " + verb + ".", NamedTextColor.GRAY));
+		sender.sendMessage(Component.text("Grund: " + reason, NamedTextColor.GOLD));
+		sender.sendMessage(Component.text("Dauer: " + timeString, NamedTextColor.GOLD));
 	}
 
 	@NotNull
 	private List<String> getReasons(){
-		Session session = HibernateUtil.getSession();
-		;
-		Transaction transaction = session.beginTransaction();
-		List<String> resultList = session
-				.createQuery("select reason from BansystemReasons WHERE type = :type", String.class)
-				.setCacheable(true)
-				.setParameter("type", type)
-				.getResultList();
-		transaction.commit();
-		session.close();
-		return resultList;
+		return sessionFactory.fromSession(session -> {
+			Transaction transaction = session.beginTransaction();
+			List<String> resultList = session
+					.createQuery("select reason from BansystemReasons WHERE type = :type", String.class)
+					.setCacheable(true)
+					.setParameter("type", type)
+					.getResultList();
+			transaction.commit();
+			session.close();
+			return resultList;
+		});
+
 	}
 
 	@NotNull
 	private List<BansystemReasons> getBanSystemReasons(){
-		Session session = HibernateUtil.getSession();
-		;
-		Transaction transaction = session.beginTransaction();
-		List<BansystemReasons> resultList = session
-				.createQuery("from BansystemReasons WHERE type = :type", BansystemReasons.class)
-				.setCacheable(true)
-				.setParameter("type", type)
-				.getResultList();
-		transaction.commit();
-		session.close();
-		return resultList;
+		return sessionFactory.fromSession(session -> {
+			Transaction transaction = session.beginTransaction();
+			List<BansystemReasons> resultList = session
+					.createQuery("from BansystemReasons WHERE type = :type", BansystemReasons.class)
+					.setCacheable(true)
+					.setParameter("type", type)
+					.getResultList();
+			transaction.commit();
+
+			return resultList;
+		});
 	}
 }

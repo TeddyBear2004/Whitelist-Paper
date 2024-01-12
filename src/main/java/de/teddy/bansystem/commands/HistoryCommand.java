@@ -1,14 +1,21 @@
 package de.teddy.bansystem.commands;
 
-import de.teddy.bansystem.BanSystem;
-import de.teddy.bansystem.database.tables.BansystemPunishment;
+import de.teddy.bansystem.tables.BansystemPunishment;
 import de.teddy.util.TimeUtil;
 import de.teddy.util.UUIDConverter;
-import org.bukkit.ChatColor;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Root;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
+import org.hibernate.SessionFactory;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -18,60 +25,79 @@ import java.util.Objects;
 import java.util.UUID;
 
 public class HistoryCommand implements CommandExecutor, TabCompleter {
-	public boolean onCommand(CommandSender sender, Command cmd, String commandLabel, String[] args){
-		if(sender.hasPermission("bansystem.history")){
-			if(args.length >= 1){
-				try{
-					UUID uuidByName = UUIDConverter.getUUIDByName(args[0]);
-					if(uuidByName != null){
-						List<BansystemPunishment> punishments = getPunishments(uuidByName.toString());
-						if(punishments.size() > 0){
-							BanSystem.sendMessage(sender, "History von " + ChatColor.GOLD + args[0] + ChatColor.GRAY + ":");
-							SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy HH:mm");
-							for(BansystemPunishment punishment : punishments){
-								//hellrotTYPE goldDatum Uhrzeit gray- golddauer abMod:grauvon hellblauStaff
-								//gelb/wennentbanntDurchGestrichenGrund
-								String firstMessage =
-										String.format("%s%s %s%s %s- %s%s",
-												ChatColor.DARK_RED,
-												Objects.equals(punishment.getType(), "b") ? "Ban" : punishment.getType().equals("m") ? "Mute" : "",
-												ChatColor.YELLOW,
-												sdf.format(new Date(punishment.getStartTime())),
-												ChatColor.DARK_GRAY,
-												ChatColor.YELLOW,
-												TimeUtil.parseMillis(punishment.getDuration()))
-												+ ChatColor.GRAY + " von " + ChatColor.AQUA + punishment.getStaff().getUsername();
+	private static final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat("dd.MM.yyyy HH:mm");
+	private final SessionFactory sessionFactory;
 
-								String secondMessage =
-										ChatColor.GRAY + "(" + ChatColor.YELLOW + (punishment.isActive() ? "" : ChatColor.STRIKETHROUGH.toString()) + punishment.getReason() + ChatColor.RESET + ChatColor.GRAY + ")";
-
-								sender.sendMessage(ChatColor.DARK_GRAY + ">> §7" + firstMessage);
-								sender.sendMessage(ChatColor.DARK_GRAY + ">> §7" + secondMessage);
-							}
-						}else{
-							BanSystem.sendMessage(sender, ChatColor.GOLD + args[0] + ChatColor.GRAY + " hat keine Bestrafungen!");
-						}
-					}else{
-						BanSystem.sendMessage(sender, "§c" + args[0] + " wurde nicht gefunden.");
-					}
-					return true;
-				}catch(IOException e){
-					BanSystem.sendErrorMessage(sender, "Der Spieler konnte nicht gefunden werden!");
-					return true;
-				}
-			}
-		}else{
-			BanSystem.sendErrorMessage(sender, "Du hast keine Berechtigung!");
+	public HistoryCommand(SessionFactory sessionFactory){
+		this.sessionFactory = sessionFactory;
+	}
+	public boolean onCommand(CommandSender sender, @NotNull Command cmd, @NotNull String commandLabel, String[] args) {
+		if (!sender.hasPermission("bansystem.history")) {
+			sender.sendMessage(Component.text("Du hast keine Berechtigung!", NamedTextColor.RED));
 			return true;
 		}
-		return false;
+
+		if (args.length < 1) return false;
+
+		try {
+			UUID uuidByName = UUIDConverter.getUUIDByName(args[0]);
+			if (uuidByName == null) {
+				sender.sendMessage(Component.text(args[0] + " wurde nicht gefunden.", NamedTextColor.RED));
+				return true;
+			}
+
+			List<BansystemPunishment> punishments = getPunishments(uuidByName.toString());
+			if (punishments.isEmpty()) {
+				sender.sendMessage(Component.text(args[0] + " hat keine Bestrafungen!", NamedTextColor.GOLD));
+				return true;
+			}
+
+			sender.sendMessage(Component.text("History von " + args[0] + ":", NamedTextColor.GOLD));
+			for (BansystemPunishment punishment : punishments) {
+				displayPunishment(sender, punishment);
+			}
+		} catch (IOException e) {
+			sender.sendMessage(Component.text("Der Spieler konnte nicht gefunden werden!", NamedTextColor.RED));
+		}
+
+		return true;
 	}
 
-	public java.util.List<String> onTabComplete(CommandSender sender, Command cmd, String commandLabel, String[] args){
+	public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command cmd, @NotNull String commandLabel, String[] args) {
 		return null;
 	}
 
-	private List<BansystemPunishment> getPunishments(String uuid){
-		return BanSystem.INSTANCE.session.createQuery("from BansystemPunishment where player.uuid = :uuid order by startTime", BansystemPunishment.class).setParameter("uuid", uuid).list();
+	private List<BansystemPunishment> getPunishments(String uuid) {
+		return sessionFactory.fromSession(session -> {
+			CriteriaBuilder builder = session.getCriteriaBuilder();
+			CriteriaQuery<BansystemPunishment> query = builder.createQuery(BansystemPunishment.class);
+			Root<BansystemPunishment> root = query.from(BansystemPunishment.class);
+			query.select(root).where(builder.equal(root.get("player").get("uuid"), uuid)).orderBy(builder.asc(root.get("startTime")));
+			return session.createQuery(query).getResultList();
+		});
+	}
+
+	private void displayPunishment(CommandSender sender, BansystemPunishment punishment) {
+		String punishmentType = Objects.equals(punishment.getType(), "b") ? "Ban" : punishment.getType().equals("m") ? "Mute" : "";
+		Component firstMessage = Component.text()
+				.append(Component.text(punishmentType + " ", NamedTextColor.DARK_RED))
+				.append(Component.text(SIMPLE_DATE_FORMAT.format(new Date(punishment.getStartTime())) + " - ", NamedTextColor.YELLOW))
+				.append(Component.text(TimeUtil.parseMillis(punishment.getDuration()) + " ", NamedTextColor.YELLOW))
+				.append(Component.text("von ", NamedTextColor.GRAY))
+				.append(Component.text(punishment.getStaff().getUsername(), NamedTextColor.AQUA))
+				.build();
+
+		TextComponent reason = Component.text(punishment.getReason(), NamedTextColor.YELLOW);
+		if(!punishment.isActive())
+			reason = reason.decorate(TextDecoration.STRIKETHROUGH);
+
+		Component secondMessage = Component.text()
+				.append(Component.text("(", NamedTextColor.GRAY))
+				.append(reason)
+				.append(Component.text(")", NamedTextColor.GRAY))
+				.build();
+
+		sender.sendMessage(firstMessage);
+		sender.sendMessage(secondMessage);
 	}
 }

@@ -9,7 +9,6 @@ import java.util.regex.Pattern;
 
 public class TimeUtil {
 	public static String parseMillis(long millis){
-		long cache = millis;
 		long days = (millis - (millis % 86_400_000)) / 86_400_000;
 		millis -= days * 86400000;
 		long hours = (millis - (millis % 3_600_000)) / 3_600_000;

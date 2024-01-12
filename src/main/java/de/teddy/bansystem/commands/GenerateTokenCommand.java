@@ -1,14 +1,13 @@
 package de.teddy.bansystem.commands;
 
-import de.teddy.bansystem.database.tables.BansystemToken;
-import de.teddy.util.HibernateUtil;
-import net.md_5.bungee.api.chat.BaseComponent;
-import net.md_5.bungee.api.chat.ClickEvent;
-import net.md_5.bungee.api.chat.ComponentBuilder;
+import de.teddy.bansystem.tables.BansystemToken;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.hibernate.Session;
+import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 import org.jetbrains.annotations.NotNull;
 
@@ -17,6 +16,11 @@ public class GenerateTokenCommand implements CommandExecutor {
 			"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
 			"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
 			"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"};
+	private final SessionFactory sessionFactory;
+
+	public GenerateTokenCommand(SessionFactory sessionFactory){
+		this.sessionFactory = sessionFactory;
+	}
 
 	@Override
 	public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args){
@@ -26,19 +30,31 @@ public class GenerateTokenCommand implements CommandExecutor {
 			for(int i = 0; i < 32; i++)
 				token.append(TOKEN_CHARS[(int)(Math.random() * TOKEN_CHARS.length)]);
 
-			Session session = HibernateUtil.getSession();
-			Transaction transaction = session.beginTransaction();
-			BansystemToken bansystemToken = new BansystemToken();
-			bansystemToken.setToken(token.toString());
-			session.save(bansystemToken);
-			transaction.commit();
-			session.close();
-			BaseComponent[] message
-					= new ComponentBuilder("§7Du hast den §eToken §7erfolgreich §egeneriert§7! Klicke §1[§ehier§1] §7um diesen zu kopieren.")
-					.event(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, token.toString()))
-					.create();
+			sessionFactory.inSession(session -> {
+				Transaction transaction = session.beginTransaction();
+				BansystemToken bansystemToken = new BansystemToken();
+				bansystemToken.setToken(token.toString());
+				session.persist(bansystemToken);
+				transaction.commit();
 
-			sender.sendMessage(message);
+				Component message = Component.text()
+						.append(Component.text("Du hast den ", NamedTextColor.GRAY))
+						.append(Component.text("Token ", NamedTextColor.YELLOW))
+						.append(Component.text("erfolgreich ", NamedTextColor.GRAY))
+						.append(Component.text("generiert", NamedTextColor.YELLOW))
+						.append(Component.text("! Klicke ", NamedTextColor.GRAY))
+						.append(Component.text("[", NamedTextColor.DARK_BLUE))
+						.append(Component.text("hier", NamedTextColor.YELLOW))
+						.append(Component.text("] ", NamedTextColor.DARK_BLUE))
+						.append(Component.text("um diesen zu kopieren.", NamedTextColor.GRAY))
+						.clickEvent(ClickEvent.copyToClipboard(token.toString()))
+						.build();
+
+				sender.sendMessage(message);
+
+			});
+
+
 		}
 		return true;
 	}

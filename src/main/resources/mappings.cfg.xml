@@ -4,6 +4,10 @@
 		"http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
 <hibernate-configuration>
 	<session-factory>
-		<mapping class="de.teddy.chatutilities.tables.ChatUtilPlayer"/>
+		<mapping class="de.teddy.bansystem.tables.BansystemPlayer"/>
+		<mapping class="de.teddy.bansystem.tables.BansystemPunishment"/>
+		<mapping class="de.teddy.bansystem.tables.BansystemReasons"/>
+		<mapping class="de.teddy.bansystem.tables.BansystemToken"/>
+		<mapping class="de.teddy.bansystem.tables.BansystemWhitelist"/>
 	</session-factory>
 </hibernate-configuration>
