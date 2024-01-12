@@ -53,7 +53,7 @@ public class WhitelistCommand implements CommandExecutor, TabCompleter {
                     }
 
                     BansystemWhitelist bansystemWhitelist = new BansystemWhitelist();
-                    bansystemWhitelist.setBansystemPlayer(bansystemPlayer);
+                    bansystemWhitelist.setPlayer(bansystemPlayer);
                     bansystemWhitelist.setBansystemToken(session.get(BansystemToken.class, 0));
                     session.persist(bansystemWhitelist);
 

@@ -24,10 +24,12 @@ public class BansystemPunishment implements Serializable {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Integer punishmentId;
 
+	@Setter
 	@ManyToOne(fetch = FetchType.EAGER)
 	@JoinColumn(name = "player_id")
 	private BansystemPlayer player;
 
+	@Setter
 	@ManyToOne(fetch = FetchType.EAGER)
 	@JoinColumn(name = "staff_id")
 	private BansystemPlayer staff;
@@ -35,12 +37,15 @@ public class BansystemPunishment implements Serializable {
 	@Column(name = "start_time")
 	private long startTime;
 
+	@Setter
 	@Column(name = "duration")
 	private long duration;
 
+	@Setter
 	@Column(name = "active")
 	private boolean active;
 
+	@Setter
 	@Column(name = "type", nullable = false)
 	private String type;
 
@@ -65,70 +70,6 @@ public class BansystemPunishment implements Serializable {
 				ChatColor.RED + getReason() + "\n\n" +
 				ChatColor.YELLOW + "Verbleibende Zeit: " +
 				ChatColor.RED + (getDuration() < 0 ? "PERMANENT" : TimeUtil.parseMillis((getStartTime() + getDuration() - System.currentTimeMillis())));
-	}
-
-	public void setActive(boolean active){
-		this.active = active;
-	}
-
-	public boolean isActive(){
-		return active;
-	}
-
-	public Integer getPunishmentId(){
-		return punishmentId;
-	}
-
-	public void setPunishmentId(Integer punishmentId){
-		this.punishmentId = punishmentId;
-	}
-
-	public BansystemPlayer getPlayer(){
-		return player;
-	}
-
-	public void setPlayer(BansystemPlayer player){
-		this.player = player;
-	}
-
-	public BansystemPlayer getStaff(){
-		return staff;
-	}
-
-	public void setStaff(BansystemPlayer staff){
-		this.staff = staff;
-	}
-
-	public long getStartTime(){
-		return startTime;
-	}
-
-	public void setStartTime(long startTime){
-		this.startTime = startTime;
-	}
-
-	public long getDuration(){
-		return duration;
-	}
-
-	public void setDuration(Integer duration){
-		this.duration = duration;
-	}
-
-	public String getType(){
-		return type;
-	}
-
-	public void setType(String type){
-		this.type = type;
-	}
-
-	public String getReason(){
-		return reason;
-	}
-
-	public void setReason(String reason){
-		this.reason = reason;
 	}
 
 	@Override

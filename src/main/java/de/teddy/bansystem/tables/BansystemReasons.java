@@ -1,7 +1,6 @@
 package de.teddy.bansystem.tables;
 
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 import org.hibernate.Hibernate;
@@ -14,44 +13,11 @@ import java.util.Objects;
 @Getter
 @Setter
 @ToString
-@RequiredArgsConstructor
 @Entity
 @Table(name = "bansystem_reasons")
 public class BansystemReasons implements Serializable {
 
 	@Serial private static final long serialVersionUID = 1L;
-
-	public Integer getReasonId(){
-		return reasonId;
-	}
-
-	public void setReasonId(Integer reasonId){
-		this.reasonId = reasonId;
-	}
-
-	public Integer getDuration(){
-		return duration;
-	}
-
-	public void setDuration(Integer duration){
-		this.duration = duration;
-	}
-
-	public String getType(){
-		return type;
-	}
-
-	public void setType(String type){
-		this.type = type;
-	}
-
-	public String getReason(){
-		return reason;
-	}
-
-	public void setReason(String reason){
-		this.reason = reason;
-	}
 
 	@Id
 	@Column(name = "reason_id", nullable = false)

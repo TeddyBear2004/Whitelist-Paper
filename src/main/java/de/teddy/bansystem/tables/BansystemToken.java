@@ -1,7 +1,6 @@
 package de.teddy.bansystem.tables;
 
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 import org.hibernate.Hibernate;
@@ -14,7 +13,6 @@ import java.util.Objects;
 @Getter
 @Setter
 @ToString
-@RequiredArgsConstructor
 @Entity
 @Table(name = "bansystem_token")
 public class BansystemToken implements Serializable {
@@ -25,22 +23,6 @@ public class BansystemToken implements Serializable {
 	@Column(name = "token_id", nullable = false)
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Integer tokenId;
-
-	public Integer getTokenId(){
-		return tokenId;
-	}
-
-	public void setTokenId(Integer tokenId){
-		this.tokenId = tokenId;
-	}
-
-	public String getToken(){
-		return token;
-	}
-
-	public void setToken(String token){
-		this.token = token;
-	}
 
 	@Column(name = "token", nullable = false)
 	private String token;

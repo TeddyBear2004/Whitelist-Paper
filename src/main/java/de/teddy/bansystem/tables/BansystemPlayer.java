@@ -40,39 +40,6 @@ public class BansystemPlayer implements Serializable {
 		this.firstLogin = firstLogin;
 	}
 
-	public String getUuid(){
-		return uuid;
-	}
-
-	public void setUuid(String uuid){
-		this.uuid = uuid;
-	}
-
-	public String getUsername(){
-		return username;
-	}
-
-	public void setUsername(String username){
-		this.username = username;
-	}
-
-	public Date getFirstLogin(){
-		return firstLogin;
-	}
-
-	public void setFirstLogin(Date firstLogin){
-		this.firstLogin = firstLogin;
-	}
-
-	public Date getLastLogin(){
-		return lastLogin;
-	}
-
-	public void setLastLogin(Date lastLogin){
-		this.lastLogin = lastLogin;
-	}
-
-
 	@Override
 	public boolean equals(Object o){
 		if(this == o)

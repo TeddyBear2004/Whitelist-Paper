@@ -1,5 +1,8 @@
 package de.teddy.bansystem.tables;
 
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
 import org.hibernate.Hibernate;
 import org.hibernate.annotations.NotFound;
 import org.hibernate.annotations.NotFoundAction;
@@ -9,6 +12,9 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.util.Objects;
 
+@Getter
+@Setter
+@ToString
 @Entity
 @Table(name = "bansystem_whitelist")
 public class BansystemWhitelist implements Serializable {
@@ -20,30 +26,14 @@ public class BansystemWhitelist implements Serializable {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Integer whitelistId;
 
-	public void setBansystemPlayer(BansystemPlayer bansystemPlayer){
-		this.bansystemPlayer = bansystemPlayer;
-	}
-
 	@ManyToOne(fetch = FetchType.EAGER)
 	@JoinColumn(name = "player_id")
 	@NotFound(action = NotFoundAction.IGNORE)
-	private BansystemPlayer bansystemPlayer;
+	private BansystemPlayer player;
 
 	@ManyToOne(fetch = FetchType.EAGER)
 	@JoinColumn(name = "token_id")
 	BansystemToken bansystemToken;
-
-	public BansystemPlayer getPlayer(){return bansystemPlayer;}
-
-	public Integer getWhitelistId(){return whitelistId;}
-
-	public BansystemToken getBansystemToken(){
-		return bansystemToken;
-	}
-
-	public void setBansystemToken(BansystemToken bansystemToken){
-		this.bansystemToken = bansystemToken;
-	}
 
 	@Override
 	public boolean equals(Object o){
