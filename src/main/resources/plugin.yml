@@ -1,0 +1,126 @@
+name: BanSystem
+version: ${project.version}
+main: de.teddy.bansystem.BanSystem
+prefix: BanSystem
+author: TeddyBear_2004
+api-version: 1.17
+default-permission: op
+
+libraries:
+  - org.hibernate:hibernate-core:5.6.1.Final
+  - org.projectlombok:lombok:1.18.22
+  - org.mariadb.jdbc:mariadb-java-client:3.0.2-rc
+
+permissions:
+  bansystem.supporter:
+    children:
+      - bansystem.ban
+      - bansystem.mute
+      - bansystem.unmute
+      - bansystem.kick
+      - bansystem.receive.history
+      - bansystem.bansystem.receive.history
+      - bansystem.history
+  bansystem.moderator:
+    children:
+      - bansystem.supporter
+      - bansystem.ban.advanced
+      - bansystem.unban
+      - bansystem.mute.advanced
+      - bansystem.unmute
+      - bansystem.reloadReasons
+      - bansystem.bansystem.receive.history.advanced
+      - bansystem.history.advanced
+      - bansystem.generatetoken
+      - bansystem.creative.inventory
+      - bansystem.spawn
+      - bansystem.vanish
+      - bansystem.vanish.see.hidden
+  bansystem.*:
+    children:
+      - bansystem.moderator
+
+commands:
+  generateToken:
+    usage: /generateToken
+    description: Generate a new token
+    permission: bansystem.generatetoken
+  ban:
+    usage: /ban <player> -r <reason> -t <1d2h5m>
+    description: Ban a player
+    permission: bansystem.ban
+    aliases:
+      - b
+  unban:
+    usage: /unban <player>
+    description: Unban a player
+    permission: bansystem.unban
+    aliases:
+      - pardon
+      - ub
+  mute:
+    usage: /mute <player> -r <reason> -t <1d2h5m>
+    description: Mute a player
+    permission: bansystem.mute
+    aliases:
+      - m
+  history:
+    usage: /history <player>
+    description: Show the history of a player
+    permission: bansystem.receive.history
+    aliases:
+      - h
+  unmute:
+    usage: /unmute <player>
+    description: Unmute a player
+    permission: bansystem.unmute
+    aliases:
+      - um
+  kick:
+    usage: /kick <player> -r <reason>
+    description: Kick a player
+    permission: bansystem.kick
+    aliases:
+      - k
+  whitelist:
+    usage: /whitelist <add|remove|list> <player>
+    description: Add or remove a player from the whitelist
+    permission: bansystem.whiteList, bansystem.whiteList, bansystem.whiteList
+    aliases:
+      - wl
+  creative:
+    usage: /creative <player>
+    description: Change a player to creative mode
+    permission: bansystem.gamemode
+    aliases:
+      - c
+  survival:
+    usage: /survival <player>
+    description: Change a player to survival mode
+    permission: bansystem.gamemode
+    aliases:
+      - su
+  spectator:
+    usage: /spectator <player>
+    description: Change a player to spectator mode
+    permission: bansystem.gamemode
+    aliases:
+      - sp
+  adventure:
+    usage: /adventure <player>
+    description: Change a player to adventure mode
+    permission: bansystem.gamemode
+    aliases:
+      - ad
+  gm:
+    usage: /gm <0|1|2|3|survival|creative|adventure|spectator> <player>
+    description: Change a player's gamemode
+    permission: bansystem.gamemode
+  spawn:
+    usage: /spawn <player>
+    description: Teleport to the spawn
+    permission: bansystem.spawn
+  vanish:
+    usage: /vanish
+    description: Vanish from the server
+    permission: bansystem.vanish
