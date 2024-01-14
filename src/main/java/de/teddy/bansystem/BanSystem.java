@@ -19,7 +19,7 @@ public final class BanSystem extends JavaPlugin {
 
 	@Override
 	public void onEnable() {
-		saveConfig();
+		saveDefaultConfig();
 
 		TeddyLibrary plugin = getPlugin(TeddyLibrary.class);
 		File file = new File(getDataFolder(), "mappings.cfg.xml");
@@ -29,7 +29,7 @@ public final class BanSystem extends JavaPlugin {
 		spawn = getConfig().getLocation("spawn");
 
 		registerCommands(sessionFactory);
-		Bukkit.getServer().getPluginManager().registerEvents(new CancelableEvents(sessionFactory), this);
+		Bukkit.getServer().getPluginManager().registerEvents(new CancelableEvents(sessionFactory, getConfig().getString("gamemode")), this);
 	}
 
 	private void registerCommands(SessionFactory sessionFactory) {
@@ -38,9 +38,9 @@ public final class BanSystem extends JavaPlugin {
 		registerCommand("unban", new UnPunishCommand("b", "entbannt", sessionFactory));
 		registerCommand("unmute", new UnPunishCommand("m", "entmutet", sessionFactory));
 		registerCommand("kick", new KickCommand(sessionFactory));
-		registerCommand("whitelist", new WhitelistCommand(sessionFactory));
+		registerCommand("whitelist", new WhitelistCommand(sessionFactory, getConfig().getString("gamemode")));
 		registerCommand("history", new HistoryCommand(sessionFactory));
-		registerCommand("generateToken", new GenerateTokenCommand(sessionFactory));
+		registerCommand("generateToken", new GenerateTokenCommand(sessionFactory, getConfig().getString("gamemode")));
 		registerCommand("gm", new GmCommand());
 		registerCommand("survival", new ChangeGamemodeCommand("survival"));
 		registerCommand("creative", new ChangeGamemodeCommand("creative"));

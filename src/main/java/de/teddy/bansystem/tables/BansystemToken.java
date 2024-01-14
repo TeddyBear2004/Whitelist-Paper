@@ -27,6 +27,9 @@ public class BansystemToken implements Serializable {
 	@Column(name = "token", nullable = false)
 	private String token;
 
+	@Column(name = "gamemode", nullable = false)
+	private String gamemode;
+
 	@Override
 	public boolean equals(Object o){
 		if(this == o)

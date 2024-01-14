@@ -1,16 +1,23 @@
 package de.teddy.bansystem.tables;
 
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Root;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 import org.hibernate.Hibernate;
+import org.hibernate.Session;
 import org.hibernate.annotations.NotFound;
 import org.hibernate.annotations.NotFoundAction;
 
 import jakarta.persistence.*;
+import org.hibernate.query.Query;
+
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.Objects;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -48,5 +55,24 @@ public class BansystemWhitelist implements Serializable {
 	@Override
 	public int hashCode(){
 		return getClass().hashCode();
+	}
+
+	public static Query<BansystemWhitelist> whitelistQuery(Session session, UUID uuid) {
+		CriteriaBuilder builder = session.getCriteriaBuilder();
+		CriteriaQuery<BansystemWhitelist> query = builder.createQuery(BansystemWhitelist.class);
+		Root<BansystemWhitelist> root = query.from(BansystemWhitelist.class);
+		query.select(root).where(builder.equal(root.get("player").get("uuid"), uuid.toString()));
+		return session.createQuery(query);
+	}
+
+	public static Query<BansystemWhitelist> whitelistQuery(Session session, UUID uuid, String gamemode) {
+		CriteriaBuilder builder = session.getCriteriaBuilder();
+		CriteriaQuery<BansystemWhitelist> query = builder.createQuery(BansystemWhitelist.class);
+		Root<BansystemWhitelist> root = query.from(BansystemWhitelist.class);
+		query.select(root).where(builder.and(
+				builder.equal(root.get("player").get("uuid"), uuid.toString()),
+				builder.equal(root.get("bansystemToken").get("gamemode"), gamemode)
+		));
+		return session.createQuery(query);
 	}
 }

@@ -17,24 +17,25 @@ public class GenerateTokenCommand implements CommandExecutor {
 			"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
 			"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"};
 	private final SessionFactory sessionFactory;
+	private final String gameMode;
 
-	public GenerateTokenCommand(SessionFactory sessionFactory){
+	public GenerateTokenCommand(SessionFactory sessionFactory, String gameMode){
 		this.sessionFactory = sessionFactory;
+		this.gameMode = gameMode;
 	}
 
 	@Override
 	public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args){
 		if(sender.hasPermission("bansystem.generatetoken")){
 			// Generate Token
-			StringBuilder token = new StringBuilder();
-			for(int i = 0; i < 32; i++)
-				token.append(TOKEN_CHARS[(int)(Math.random() * TOKEN_CHARS.length)]);
+			String token = generateToken();
 
 			sessionFactory.inSession(session -> {
 				session.beginTransaction();
 
 				BansystemToken bansystemToken = new BansystemToken();
-				bansystemToken.setToken(token.toString());
+				bansystemToken.setToken(token);
+				bansystemToken.setGamemode(this.gameMode);
 				session.persist(bansystemToken);
 
 				session.getTransaction().commit();
@@ -60,5 +61,14 @@ public class GenerateTokenCommand implements CommandExecutor {
 		}
 		return true;
 	}
+
+	@NotNull
+	public static String generateToken() {
+		StringBuilder token = new StringBuilder();
+		for(int i = 0; i < 32; i++)
+			token.append(TOKEN_CHARS[(int)(Math.random() * TOKEN_CHARS.length)]);
+		return token.toString();
+	}
+
 
 }

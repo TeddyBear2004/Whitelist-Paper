@@ -1,3 +1,4 @@
+gamemode: artismea
 spawn:
   ==: org.bukkit.Location
   world: world

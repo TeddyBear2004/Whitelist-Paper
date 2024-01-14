@@ -26,9 +26,11 @@ import java.util.UUID;
 public class CancelableEvents implements Listener {
     private static final List<String> forbiddenCommands = List.of("/msg", "/tell");
     private final SessionFactory sessionFactory;
+    private final String gamemode;
 
-    public CancelableEvents(SessionFactory sessionFactory) {
+    public CancelableEvents(SessionFactory sessionFactory, String gamemode) {
         this.sessionFactory = sessionFactory;
+        this.gamemode = gamemode;
     }
 
     @EventHandler
@@ -96,11 +98,7 @@ public class CancelableEvents implements Listener {
                 return;
             }
 
-            CriteriaBuilder criteriaBuilder = session.getCriteriaBuilder();
-            CriteriaQuery<BansystemWhitelist> criteriaQuery = criteriaBuilder.createQuery(BansystemWhitelist.class);
-            Root<BansystemWhitelist> root = criteriaQuery.from(BansystemWhitelist.class);
-            criteriaQuery.select(root).where(criteriaBuilder.equal(root.get("player").get("uuid"), uniqueId.toString()));
-            List<BansystemWhitelist> bansystemWhitelist = session.createQuery(criteriaQuery).getResultList();
+            List<BansystemWhitelist> bansystemWhitelist = BansystemWhitelist.whitelistQuery(session, uniqueId, gamemode).getResultList();
 
             if (bansystemWhitelist.isEmpty()) {
                 event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_WHITELIST, Component.text("§4Du stehst nicht auf der Whitelist!"));

@@ -28,10 +28,12 @@ import java.util.logging.Logger;
 public class WhitelistCommand implements CommandExecutor, TabCompleter {
 
     private final SessionFactory sessionFactory;
+    private final String gamemode;
     private static final Logger LOGGER = Logger.getLogger(WhitelistCommand.class.getName());
 
-    public WhitelistCommand(SessionFactory sessionFactory) {
+    public WhitelistCommand(SessionFactory sessionFactory, String gamemode) {
         this.sessionFactory = sessionFactory;
+        this.gamemode = gamemode;
     }
 
     private void add(@NotNull CommandSender sender, @NotNull String[] args) {
@@ -50,20 +52,21 @@ public class WhitelistCommand implements CommandExecutor, TabCompleter {
             sessionFactory.inSession(session -> {
                 session.beginTransaction();
 
-                CriteriaBuilder builder = session.getCriteriaBuilder();
-                CriteriaQuery<BansystemPlayer> query = builder.createQuery(BansystemPlayer.class);
-                Root<BansystemPlayer> root = query.from(BansystemPlayer.class);
-                query.select(root).where(builder.equal(root.get("uuid"), uuid.toString()));
-                BansystemPlayer bansystemPlayer = session.createQuery(query).uniqueResult();
+                BansystemPlayer bansystemPlayer = session.get(BansystemPlayer.class, uuid.toString());
 
                 if (bansystemPlayer == null) {
                     bansystemPlayer = new BansystemPlayer(uuid.toString(), new Date(System.currentTimeMillis()));
                     session.persist(bansystemPlayer);
                 }
 
+                BansystemToken token = new BansystemToken();
+                token.setGamemode(gamemode);
+                token.setToken(GenerateTokenCommand.generateToken());
+                session.persist(token);
+
                 BansystemWhitelist bansystemWhitelist = new BansystemWhitelist();
                 bansystemWhitelist.setPlayer(bansystemPlayer);
-                bansystemWhitelist.setBansystemToken(session.get(BansystemToken.class, 0));
+                bansystemWhitelist.setBansystemToken(token);
                 session.persist(bansystemWhitelist);
 
                 session.getTransaction().commit();
@@ -86,11 +89,7 @@ public class WhitelistCommand implements CommandExecutor, TabCompleter {
             UUID uuid = UUIDConverter.getUUIDByName(args[1]);
             if (uuid != null) {
                 sessionFactory.inSession(session -> {
-                    CriteriaBuilder builder = session.getCriteriaBuilder();
-                    CriteriaQuery<BansystemWhitelist> query = builder.createQuery(BansystemWhitelist.class);
-                    Root<BansystemWhitelist> root = query.from(BansystemWhitelist.class);
-                    query.select(root).where(builder.equal(root.get("bansystemPlayer").get("uuid"), uuid.toString()));
-                    BansystemWhitelist bansystemWhitelist = session.createQuery(query).uniqueResult();
+                    BansystemWhitelist bansystemWhitelist = BansystemWhitelist.whitelistQuery(session, uuid).uniqueResult();
 
                     session.remove(bansystemWhitelist);
 
