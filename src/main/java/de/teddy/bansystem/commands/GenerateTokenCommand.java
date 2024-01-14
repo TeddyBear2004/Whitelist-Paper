@@ -31,11 +31,13 @@ public class GenerateTokenCommand implements CommandExecutor {
 				token.append(TOKEN_CHARS[(int)(Math.random() * TOKEN_CHARS.length)]);
 
 			sessionFactory.inSession(session -> {
-				Transaction transaction = session.beginTransaction();
+				session.beginTransaction();
+
 				BansystemToken bansystemToken = new BansystemToken();
 				bansystemToken.setToken(token.toString());
 				session.persist(bansystemToken);
-				transaction.commit();
+
+				session.getTransaction().commit();
 
 				Component message = Component.text()
 						.append(Component.text("Du hast den ", NamedTextColor.GRAY))

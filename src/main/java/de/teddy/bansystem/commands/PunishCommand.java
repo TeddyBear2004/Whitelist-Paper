@@ -258,7 +258,7 @@ public record PunishCommand(String normalPermission, String extendedPermission, 
 
 	private void punishPlayer(UUID uuid, String name, String reason, long duration, CommandSender staff){
 		sessionFactory.inSession(session -> {
-			Transaction transaction = session.beginTransaction();
+			session.beginTransaction();
 
 			BansystemPlayer banned = session.get(BansystemPlayer.class, uuid.toString());
 			BansystemPlayer bansystemStaff = null;
@@ -279,7 +279,7 @@ public record PunishCommand(String normalPermission, String extendedPermission, 
 			if(player != null && Objects.equals(type, "b"))
 				player.kick(Component.text(bansystemPunishment.getBanScreenMessage()));
 
-			transaction.commit();
+			session.getTransaction().commit();
 		});
 	}
 

@@ -1,6 +1,7 @@
 package de.teddy.bansystem;
 
 import de.teddy.bansystem.commands.*;
+import de.teddy.bansystem.events.CancelableEvents;
 import de.teddybear2004.library.TeddyLibrary;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
@@ -28,6 +29,7 @@ public final class BanSystem extends JavaPlugin {
 		spawn = getConfig().getLocation("spawn");
 
 		registerCommands(sessionFactory);
+		Bukkit.getServer().getPluginManager().registerEvents(new CancelableEvents(sessionFactory), this);
 	}
 
 	private void registerCommands(SessionFactory sessionFactory) {

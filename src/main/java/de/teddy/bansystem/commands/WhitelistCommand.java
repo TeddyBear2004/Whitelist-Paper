@@ -22,10 +22,13 @@ import java.sql.Date;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class WhitelistCommand implements CommandExecutor, TabCompleter {
 
     private final SessionFactory sessionFactory;
+    private static final Logger LOGGER = Logger.getLogger(WhitelistCommand.class.getName());
 
     public WhitelistCommand(SessionFactory sessionFactory) {
         this.sessionFactory = sessionFactory;
@@ -37,33 +40,39 @@ public class WhitelistCommand implements CommandExecutor, TabCompleter {
             return;
         }
 
-        try{
+        try {
             UUID uuid = UUIDConverter.getUUIDByName(args[1]);
-            if (uuid != null) {
-                sessionFactory.inSession(session -> {
-                    CriteriaBuilder builder = session.getCriteriaBuilder();
-                    CriteriaQuery<BansystemPlayer> query = builder.createQuery(BansystemPlayer.class);
-                    Root<BansystemPlayer> root = query.from(BansystemPlayer.class);
-                    query.select(root).where(builder.equal(root.get("uuid"), uuid.toString()));
-                    BansystemPlayer bansystemPlayer = session.createQuery(query).uniqueResult();
-
-                    if (bansystemPlayer == null) {
-                        bansystemPlayer = new BansystemPlayer(uuid.toString(), new Date(System.currentTimeMillis()));
-                        session.persist(bansystemPlayer);
-                    }
-
-                    BansystemWhitelist bansystemWhitelist = new BansystemWhitelist();
-                    bansystemWhitelist.setPlayer(bansystemPlayer);
-                    bansystemWhitelist.setBansystemToken(session.get(BansystemToken.class, 0));
-                    session.persist(bansystemWhitelist);
-
-                    BanSystem.sendMessage(sender, args[1] + " wird zur Whitelist hinzugefügt!");
-                });
-            } else {
+            if (uuid == null) {
                 BanSystem.sendErrorMessage(sender, "Der Spieler konnte nicht gefunden werden!");
+                return;
             }
-        }catch(IOException e){
+
+            sessionFactory.inSession(session -> {
+                session.beginTransaction();
+
+                CriteriaBuilder builder = session.getCriteriaBuilder();
+                CriteriaQuery<BansystemPlayer> query = builder.createQuery(BansystemPlayer.class);
+                Root<BansystemPlayer> root = query.from(BansystemPlayer.class);
+                query.select(root).where(builder.equal(root.get("uuid"), uuid.toString()));
+                BansystemPlayer bansystemPlayer = session.createQuery(query).uniqueResult();
+
+                if (bansystemPlayer == null) {
+                    bansystemPlayer = new BansystemPlayer(uuid.toString(), new Date(System.currentTimeMillis()));
+                    session.persist(bansystemPlayer);
+                }
+
+                BansystemWhitelist bansystemWhitelist = new BansystemWhitelist();
+                bansystemWhitelist.setPlayer(bansystemPlayer);
+                bansystemWhitelist.setBansystemToken(session.get(BansystemToken.class, 0));
+                session.persist(bansystemWhitelist);
+
+                session.getTransaction().commit();
+
+                BanSystem.sendMessage(sender, args[1] + " wird zur Whitelist hinzugefügt!");
+            });
+        } catch (IOException e) {
             BanSystem.sendErrorMessage(sender, "Der Spieler konnte nicht gefunden werden!");
+            LOGGER.log(Level.SEVERE, "An exception occurred", e);
         }
     }
 
@@ -73,7 +82,7 @@ public class WhitelistCommand implements CommandExecutor, TabCompleter {
             return;
         }
 
-        try{
+        try {
             UUID uuid = UUIDConverter.getUUIDByName(args[1]);
             if (uuid != null) {
                 sessionFactory.inSession(session -> {
@@ -90,7 +99,7 @@ public class WhitelistCommand implements CommandExecutor, TabCompleter {
             } else {
                 BanSystem.sendErrorMessage(sender, "Der Spieler konnte nicht gefunden werden!");
             }
-        }catch(IOException e){
+        } catch (IOException e) {
             BanSystem.sendErrorMessage(sender, "Der Spieler konnte nicht gefunden werden!");
         }
     }
