@@ -22,9 +22,7 @@ public final class BanSystem extends JavaPlugin {
 		saveDefaultConfig();
 
 		TeddyLibrary plugin = getPlugin(TeddyLibrary.class);
-		File file = new File(getDataFolder(), "mappings.cfg.xml");
-		saveResource("mappings.cfg.xml", true);
-		SessionFactory sessionFactory = plugin.getSessionFactory(configuration -> configuration.configure(file));
+		SessionFactory sessionFactory = plugin.getSessionFactory();
 
 		spawn = getConfig().getLocation("spawn");
 
