@@ -9,35 +9,6 @@ default-permission: op
 depend:
   - TeddyLibrary
 
-permissions:
-  bansystem.supporter:
-    children:
-      - bansystem.ban
-      - bansystem.mute
-      - bansystem.unmute
-      - bansystem.kick
-      - bansystem.receive.history
-      - bansystem.bansystem.receive.history
-      - bansystem.history
-  bansystem.moderator:
-    children:
-      - bansystem.supporter
-      - bansystem.ban.advanced
-      - bansystem.unban
-      - bansystem.mute.advanced
-      - bansystem.unmute
-      - bansystem.reloadReasons
-      - bansystem.bansystem.receive.history.advanced
-      - bansystem.history.advanced
-      - bansystem.generatetoken
-      - bansystem.creative.inventory
-      - bansystem.spawn
-      - bansystem.vanish
-      - bansystem.vanish.see.hidden
-  bansystem.*:
-    children:
-      - bansystem.moderator
-
 commands:
   generateToken:
     usage: /generateToken
@@ -118,3 +89,7 @@ commands:
     usage: /spawn <player>
     description: Teleport to the spawn
     permission: bansystem.spawn
+  listtoken:
+    usage: /listtoken
+    description: List all tokens
+    permission: bansystem.listtoken

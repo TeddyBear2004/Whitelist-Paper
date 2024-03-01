@@ -22,7 +22,6 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.List;
 import java.util.stream.Collectors;
 
 public record PunishCommand(String normalPermission, String extendedPermission, String type,
@@ -102,7 +101,6 @@ public record PunishCommand(String normalPermission, String extendedPermission, 
 				BanSystem.sendErrorMessage(sender, "Du kannst nicht länger als 10 Jahr bannen!");
 				return true;
 			}
-			System.out.println(reason + " " + minutes);
 
 			UUID uuid = getUuid(args[0]);
 			if(uuid == null){
@@ -120,7 +118,6 @@ public record PunishCommand(String normalPermission, String extendedPermission, 
 				reasonBuilder.append(args[i]).append(" ");
 
 			String reason = reasonBuilder.toString().trim();
-			System.out.println(reason);
 			for(BansystemReasons bansystemReasons : getBanSystemReasons()){
 				if(reason.trim().equalsIgnoreCase(bansystemReasons.getReason())){
 					UUID uuid = getUuid(args[0]);

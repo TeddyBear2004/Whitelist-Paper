@@ -11,7 +11,6 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.hibernate.SessionFactory;
 
-import java.io.File;
 import java.util.Objects;
 
 public final class BanSystem extends JavaPlugin {
@@ -45,6 +44,7 @@ public final class BanSystem extends JavaPlugin {
 		registerCommand("adventure", new ChangeGamemodeCommand("adventure"));
 		registerCommand("spectator", new ChangeGamemodeCommand("spectator"));
 		registerCommand("spawn", new SpawnCommand());
+		registerCommand("listtoken", new ListTokenCommand(sessionFactory));
 	}
 
 	private void registerCommand(String commandName, CommandExecutor executor) {

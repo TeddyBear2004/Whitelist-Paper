@@ -25,7 +25,7 @@ public class UUIDConverter {
 		}
 
 		JsonObject jsonObject = fetchJsonObject(API_URL + name);
-		if (jsonObject == null) return null;
+        if (jsonObject == null) throw new NullPointerException("Could not fetch UUID from Mojang API");
 
 		String id = jsonObject.get("id").getAsString();
 		UUID uuid = UUID.fromString(id.replaceFirst("(\\w{8})(\\w{4})(\\w{4})(\\w{4})(\\w{12})", "$1-$2-$3-$4-$5"));

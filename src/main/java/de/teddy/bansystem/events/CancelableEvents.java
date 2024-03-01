@@ -7,15 +7,16 @@ import de.teddy.bansystem.tables.BansystemPunishment;
 import de.teddy.bansystem.tables.BansystemWhitelist;
 import de.teddy.util.TimeUtil;
 import io.papermc.paper.event.player.AsyncChatEvent;
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.Root;
+import io.papermc.paper.event.player.ChatEvent;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
+import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 
@@ -33,7 +34,7 @@ public class CancelableEvents implements Listener {
         this.gamemode = gamemode;
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void asyncPlayerChatEvent(AsyncChatEvent event) {
         String message = PlainTextComponentSerializer.plainText().serialize(event.message());
 
@@ -54,39 +55,42 @@ public class CancelableEvents implements Listener {
 
         UUID uniqueId = player.getUniqueId();
 
-        sessionFactory.inSession(session -> {
-            Transaction transaction = session.beginTransaction();
-            List<BansystemPunishment> punishment = session
-                    .createQuery(
-                            "from BansystemPunishment where type = :type and player.uuid = :uuid and active = :active and startTime + duration > :date order by (startTime + duration) desc",
-                            BansystemPunishment.class)
-                    .setCacheable(true)
-                    .setParameter("type", "m")
-                    .setParameter("uuid", uniqueId.toString())
-                    .setParameter("active", true)
-                    .setParameter("date", System.currentTimeMillis())
-                    .getResultList();
+        Session session = sessionFactory.openSession();
+        Transaction transaction = session.beginTransaction();
+        List<BansystemPunishment> punishment = session
+                .createQuery(
+                        "from BansystemPunishment where type = :type and player.uuid = :uuid and active = :active and startTime + duration > :date order by (startTime + duration) desc",
+                        BansystemPunishment.class)
+                .setParameter("type", "m")
+                .setParameter("uuid", uniqueId.toString())
+                .setParameter("active", true)
+                .setParameter("date", System.currentTimeMillis())
+                .getResultList();
 
-            if (!punishment.isEmpty()) {
-                event.setCancelled(true);
-                long duration = punishment.get(punishment.size() - 1).getDuration();
-                BansystemPunishment punishment1;
-                if (duration == -1) {
-                    punishment1 = punishment.get(punishment.size() - 1);
-                } else {
-                    punishment1 = punishment.get(0);
-                }
-
-                String durationString = punishment.get(0).getDuration() == -1 ? "Permanent" : TimeUtil.parseMillis(punishment1.getDuration() + punishment1.getStartTime() - System.currentTimeMillis());
-                BanSystem.sendErrorMessage(player, "§cDu bist gemuted! Grund: " + punishment1.getReason() + " Dauer: " + durationString);
+        if (!punishment.isEmpty()) {
+            event.setCancelled(true);
+            long duration = punishment.get(punishment.size() - 1).getDuration();
+            BansystemPunishment punishment1;
+            if (duration == -1) {
+                punishment1 = punishment.get(punishment.size() - 1);
+            } else {
+                punishment1 = punishment.get(0);
             }
-            transaction.commit();
-        });
 
+            String durationString = punishment.get(0).getDuration() == -1 ? "Permanent" : TimeUtil.parseMillis(punishment1.getDuration() + punishment1.getStartTime() - System.currentTimeMillis());
+            BanSystem.sendErrorMessage(player, "§cDu bist gemuted! Grund: " + punishment1.getReason() + " Dauer: " + durationString);
+        }
+        transaction.commit();
+        session.close();
     }
 
     @EventHandler
     public void asyncPlayerPreLoginEvent(AsyncPlayerPreLoginEvent event) {
+        UUID id = event.getPlayerProfile().getId();
+        if (id != null && Bukkit.getOperators().contains(Bukkit.getOfflinePlayer(id))) {
+            return;
+        }
+
         sessionFactory.inSession(session -> {
             session.beginTransaction();
 
@@ -108,7 +112,6 @@ public class CancelableEvents implements Listener {
             BansystemPlayer bansystemPlayer = session.get(BansystemPlayer.class, uniqueId.toString());
 
             if (bansystemPlayer == null) {
-                System.out.println("New Login from uuid: " + uniqueId);
                 bansystemPlayer = new BansystemPlayer(uniqueId.toString(), new Date(System.currentTimeMillis()));
             }
             bansystemPlayer.setLastLogin(new Date(System.currentTimeMillis()));

@@ -89,9 +89,10 @@ public class WhitelistCommand implements CommandExecutor, TabCompleter {
             UUID uuid = UUIDConverter.getUUIDByName(args[1]);
             if (uuid != null) {
                 sessionFactory.inSession(session -> {
-                    BansystemWhitelist bansystemWhitelist = BansystemWhitelist.whitelistQuery(session, uuid).uniqueResult();
+                    List<BansystemWhitelist> bansystemWhitelist = BansystemWhitelist
+                            .whitelistQuery(session, uuid).getResultList();
 
-                    session.remove(bansystemWhitelist);
+                    bansystemWhitelist.forEach(session::remove);
 
                     BanSystem.sendMessage(sender, args[1] + " wird von der Whitelist entfernt!");
                 });
