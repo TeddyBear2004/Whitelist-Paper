@@ -42,25 +42,30 @@ public final class UnPunishCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
 
-            List<BansystemPunishment> punishments = sessionFactory.fromSession(session -> {
-                CriteriaBuilder builder = session.getCriteriaBuilder();
-                CriteriaQuery<BansystemPunishment> query = builder.createQuery(BansystemPunishment.class);
-                Root<BansystemPunishment> root = query.from(BansystemPunishment.class);
-                query.select(root)
-                        .where(builder.and(
-                                builder.equal(root.get("type"), this.type),
-                                builder.equal(root.get("player").get("uuid"), uuid.toString()),
-                                builder.or(
-                                        builder.greaterThan(root.get("startTime").as(Long.class), System.currentTimeMillis()),
-                                        builder.equal(root.get("duration"), -1)
-                                )
-                        ));
-                return session.createQuery(query).getResultList();
+            sessionFactory.inSession(session -> {
+                session.beginTransaction();
+                String hql = "FROM BansystemPunishment p " +
+                             "WHERE p.type = :type " +
+                             "AND p.player.uuid = :uuid " +
+                             "AND ((p.startTime + p.duration) > :currentTimeMillis OR p.duration = -1)";
+
+                List<BansystemPunishment> punishments = session.createQuery(hql, BansystemPunishment.class)
+                        .setParameter("type", this.type)
+                        .setParameter("uuid", uuid.toString())
+                        .setParameter("currentTimeMillis", System.currentTimeMillis())
+                        .getResultList();
+
+                System.out.println(punishments);
+
+                punishments.forEach(punishment -> punishment.setActive(false));
+
+                if(!punishments.isEmpty()){
+                    sendSuccessMessage(sender, args[0]);
+                }else {
+                    sendNoPunishFound(sender, args[0]);
+                }
+                session.getTransaction().commit();
             });
-
-
-            punishments.forEach(punishment -> punishment.setActive(false));
-            sendSuccessMessage(sender, args[0]);
 
         }catch(IOException e){
             BanSystem.sendErrorMessage(sender, "Der Spieler konnte nicht gefunden werden.");
@@ -71,6 +76,10 @@ public final class UnPunishCommand implements CommandExecutor, TabCompleter {
 
     private void sendSuccessMessage(CommandSender sender, String user) {
         BanSystem.sendMessage(sender, String.format("%s wurde erfolgreich " + this.verb + ".", user));
+    }
+
+    private void sendNoPunishFound(CommandSender sender, String user) {
+        BanSystem.sendMessage(sender, String.format("%s hatte keine Bestrafungen.", user));
     }
 
     @Override

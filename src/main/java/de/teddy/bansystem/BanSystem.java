@@ -4,10 +4,12 @@ import de.teddy.bansystem.commands.*;
 import de.teddy.bansystem.events.CancelableEvents;
 import de.teddybear2004.library.TeddyLibrary;
 import net.kyori.adventure.text.Component;
+import net.luckperms.api.LuckPerms;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.hibernate.SessionFactory;
 
@@ -15,6 +17,8 @@ import java.util.Objects;
 
 public final class BanSystem extends JavaPlugin {
 	public static Location spawn;
+
+	private LuckPerms api;
 
 	@Override
 	public void onEnable() {
@@ -27,11 +31,17 @@ public final class BanSystem extends JavaPlugin {
 
 		registerCommands(sessionFactory);
 		Bukkit.getServer().getPluginManager().registerEvents(new CancelableEvents(sessionFactory, getConfig().getString("gamemode")), this);
+
+		RegisteredServiceProvider<LuckPerms> provider = Bukkit.getServicesManager().getRegistration(LuckPerms.class);
+		if (provider != null) {
+			api = provider.getProvider();
+		}
+
 	}
 
 	private void registerCommands(SessionFactory sessionFactory) {
-		registerCommand("ban", new PunishCommand("bansystem.ban", "bansystem.ban.advanced", "b", "gebannt", sessionFactory));
-		registerCommand("mute", new PunishCommand("bansystem.mute", "bansystem.mute.advanced", "m", "gemutet", sessionFactory));
+		registerCommand("ban", new PunishCommand("bansystem.ban", "bansystem.ban.advanced", "b", "gebannt", sessionFactory, api));
+		registerCommand("mute", new PunishCommand("bansystem.mute", "bansystem.mute.advanced", "m", "gemutet", sessionFactory, api));
 		registerCommand("unban", new UnPunishCommand("b", "entbannt", sessionFactory));
 		registerCommand("unmute", new UnPunishCommand("m", "entmutet", sessionFactory));
 		registerCommand("kick", new KickCommand(sessionFactory));

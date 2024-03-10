@@ -79,7 +79,7 @@ public class TimeUtil {
 		if(!s.matches("[0-9dhm]+")){
 			throw new IllegalArgumentException("String is not a valid time format");
 		}
-		Pattern pattern = Pattern.compile("(\\d+)\\s*(d|h|m)");
+		Pattern pattern = Pattern.compile("(\\d+)\\s*([dhm])");
 		Matcher matcher = pattern.matcher(s);
 
 		long minutes = 0;

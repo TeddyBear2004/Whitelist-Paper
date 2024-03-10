@@ -8,6 +8,7 @@ default-permission: op
 
 depend:
   - TeddyLibrary
+  - LuckPerms
 
 commands:
   generateToken:

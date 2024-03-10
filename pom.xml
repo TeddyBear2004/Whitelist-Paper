@@ -6,7 +6,7 @@
 
     <groupId>de.teddybear2004</groupId>
     <artifactId>Bansystem-Paper</artifactId>
-    <version>0.1</version>
+    <version>0.2</version>
     <packaging>jar</packaging>
 
     <name>Bansystem-Paper</name>
@@ -79,7 +79,7 @@
         <dependency>
             <groupId>de.teddybear2004</groupId>
             <artifactId>TeddyLibrary</artifactId>
-            <version>0.1</version>
+            <version>0.2</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -92,6 +92,12 @@
             <groupId>org.hibernate</groupId>
             <artifactId>hibernate-core</artifactId>
             <version>6.4.4.Final</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>net.luckperms</groupId>
+            <artifactId>api</artifactId>
+            <version>5.4</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>
